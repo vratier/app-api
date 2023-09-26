@@ -1,0 +1,134 @@
+#!/bin/sh
+
+set -e
+
+cd "${0%/*}"
+
+# Check for .env file
+if [ ! -f .env ]; then
+    echo "Please create .env file"
+    exit 1
+fi
+
+# Ensure that Docker is running...
+function check_docker_is_running() {
+    if ! docker info >/dev/null 2>&1; then
+        echo "Docker is not running." >&2
+        exit 1
+    fi
+}
+source ./.env
+CLUSTER=docker-desktop
+DEPLOYMENT=tourbox-api-deploy
+GIT_HASH=$(git log --format="%h" -n 1)
+USER_ID=$(id -u)
+GROUP_ID=$(id -g)
+COMMIT_SHA=$(git rev-parse HEAD)
+
+function check_cluster() {
+    local cluster_name="$1"
+
+    # Check if kubectl is connected to the specified cluster
+    if [ $(kubectl config current-context) != "$cluster_name" ]; then
+        echo "Please make sure you are using the '$cluster_name' k8s context"
+        exit 1
+    fi
+}
+
+function check_cluster_and_pod() {
+    local deployment_name="$2"
+
+    check_cluster "$1"
+
+    # Check if there is a running pod for the specified deployment
+    local pod_name
+    pod_name=$(kubectl get pods -o custom-columns="POD:.metadata.name,CONTAINER:.spec.containers[*].name,STATUS:.status.phase" --no-headers=true | grep "$deployment_name" | grep -m 1 "Running" | awk '{print $1}')
+    if [ -z "$pod_name" ]; then
+        echo "No running pod found for the '$deployment_name' deployment."
+        exit 1
+    fi
+
+    echo "$pod_name"
+}
+function artisan_command() {
+    local pod_name=$(check_cluster_and_pod "$CLUSTER" "$DEPLOYMENT")
+    kubectl exec -it "$pod_name" -- php artisan "$@"
+}
+
+function pod_logs() {
+    local pod_name=$(check_cluster_and_pod "$CLUSTER" "$DEPLOYMENT")
+    kubectl logs "pods/$pod_name"
+}
+
+function shell_command() {
+    local pod_name=$(check_cluster_and_pod "$CLUSTER" "$DEPLOYMENT")
+    kubectl exec -it "$pod_name" -- sh
+}
+
+function build_dev_image() {
+    check_docker_is_running
+    docker build -f .dev/Dockerfile -t "tourbox-api-debug:latest" -t "tourbox-api-debug:$COMMIT_SHA" --target=debug .
+}
+
+function build_prod_image() {
+    check_docker_is_running
+    docker build -f .dev/Dockerfile -t "tourbox-api-production:latest" --target=production .
+}
+
+function install_dependencies() {
+    check_docker_is_running
+    docker run --rm -e CACHE_DRIVER=null -e COMPOSER_PROCESS_TIMEOUT=0 -u "$USER_ID:$GROUP_ID" -v .:/var/www/html -w /var/www/html laravelsail/php82-composer:latest composer install --ignore-platform-reqs
+    docker run --rm -v ".:/var/www/html" "tourbox-api-debug:latest" php artisan octane:install --server=swoole
+    docker run --rm -v ".:/var/www/html" "tourbox-api-debug:latest" php artisan key:generate
+}
+
+function start_devenv() {
+    check_cluster $CLUSTER
+    kubectl apply -f .dev/devenv.yaml
+}
+
+function stop_devenv() {
+    check_cluster $CLUSTER
+    kubectl delete -f .dev/devenv.yaml
+}
+
+case "$1" in
+    artisan)
+        shift
+        artisan_command "$@"
+        ;;
+    logs)
+        pod_logs
+        ;;
+    shell)
+        shell_command
+        ;;
+    build:dev)
+        build_dev_image
+        ;;
+    build:prod)
+        build_prod_image
+        ;;
+    install)
+        install_dependencies
+        ;;
+    start)
+        start_devenv
+        ;;
+    stop)
+        stop_devenv
+        ;;
+    *)
+        echo "Usage: $0 [command]"
+        echo "Commands:"
+        echo "  artisan          Run Laravel Artisan commands in the development container."
+        echo "  logs             Retrieve logs from a running pod for the specified deployment."
+        echo "  shell            Start an interactive shell session in the development container."
+        echo "  build:dev        Build the development Docker image."
+        echo "  build:prod       Build the production Docker image."
+        echo "  install          Install project dependencies and configure Laravel Sail."
+        echo "  start            Start the development environment using Kubernetes."
+        echo "  stop             Stop the development environment using Kubernetes."
+        exit 1
+        ;;
+esac

@@ -1,0 +1,20 @@
+services:
+    laravel.test:
+        build:
+            context: ./vendor/laravel/sail/runtimes/8.2
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: "${WWWGROUP}"
+        image: sail-8.2/app
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        tty: true
+        ports:
+            - "${APP_PORT:-8000}:80"
+        environment:
+            WWWUSER: "${WWWUSER}"
+            LARAVEL_SAIL: 1
+            IGNITION_LOCAL_SITES_PATH: "${PWD}"
+        volumes:
+            - ".:/var/www/html"
+            - "./php_local.ini:/etc/php/8.2/cli/conf.d/99-quattro.ini"
