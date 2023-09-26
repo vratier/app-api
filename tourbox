@@ -121,14 +121,14 @@ case "$1" in
     *)
         echo "Usage: $0 [command]"
         echo "Commands:"
-        echo "  artisan          Run Laravel Artisan commands in the development container."
-        echo "  logs             Retrieve logs from a running pod for the specified deployment."
-        echo "  shell            Start an interactive shell session in the development container."
-        echo "  build:dev        Build the development Docker image."
-        echo "  build:prod       Build the production Docker image."
-        echo "  install          Install project dependencies and configure Laravel Sail."
-        echo "  start            Start the development environment using Kubernetes."
-        echo "  stop             Stop the development environment using Kubernetes."
+        echo "  artisan          Run Artisan commands in dev container."
+        echo "  logs             Show logs from dev deployment."
+        echo "  shell            Start shell in dev container."
+        echo "  build:dev        Build dev image."
+        echo "  build:prod       Build pro image."
+        echo "  install          Install project dependencies."
+        echo "  start            Start k8s devenv."
+        echo "  stop             Stop k8s devenv."
         exit 1
         ;;
 esac
