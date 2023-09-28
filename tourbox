@@ -93,42 +93,42 @@ function stop_devenv() {
 }
 
 case "$1" in
-    artisan)
-        shift
-        artisan_command "$@"
-        ;;
-    logs)
-        pod_logs
-        ;;
-    shell)
-        shell_command
-        ;;
-    build:dev)
-        build_dev_image
-        ;;
-    build:prod)
-        build_prod_image
-        ;;
-    install)
-        install_dependencies
-        ;;
-    start)
-        start_devenv
-        ;;
-    stop)
-        stop_devenv
-        ;;
-    *)
-        echo "Usage: $0 [command]"
-        echo "Commands:"
-        echo "  artisan          Run Artisan commands in dev container."
-        echo "  logs             Show logs from dev deployment."
-        echo "  shell            Start shell in dev container."
-        echo "  build:dev        Build dev image."
-        echo "  build:prod       Build pro image."
-        echo "  install          Install project dependencies."
-        echo "  start            Start k8s devenv."
-        echo "  stop             Stop k8s devenv."
-        exit 1
-        ;;
+artisan)
+    shift
+    artisan_command "$@"
+    ;;
+logs)
+    pod_logs
+    ;;
+shell)
+    shell_command
+    ;;
+build:dev)
+    build_dev_image
+    ;;
+build:prod)
+    build_prod_image
+    ;;
+install)
+    install_dependencies
+    ;;
+start)
+    start_devenv
+    ;;
+stop)
+    stop_devenv
+    ;;
+*)
+    echo "Usage: $0 [command]"
+    echo "Commands:"
+    echo "  artisan          Run Artisan commands in dev container."
+    echo "  logs             Show logs from dev deployment."
+    echo "  shell            Start shell in dev container."
+    echo "  build:dev        Build dev image."
+    echo "  build:prod       Build pro image."
+    echo "  install          Install project dependencies."
+    echo "  start            Start k8s devenv."
+    echo "  stop             Stop k8s devenv."
+    exit 1
+    ;;
 esac
